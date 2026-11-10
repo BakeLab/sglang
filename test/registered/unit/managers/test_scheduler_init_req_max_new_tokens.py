@@ -44,8 +44,9 @@ class TestSchedulerInitReqMaxNewTokens(unittest.TestCase):
     would violate a rule or exceed the request. Over-long inputs degenerate to
     max_new_tokens = 0 and are rejected by later admission checks.
 
-    PD-prefill requests bypass all rules: they always budget exactly one
-    handoff token (test_pd_prefill_forces_one_handoff_token).
+    PD-prefill requests budget exactly one handoff token, then the same rules
+    decide whether the prompt plus that token fits; one that cannot is rejected
+    at intake (test_pd_prefill_forces_one_handoff_token).
     """
 
     @classmethod
@@ -257,25 +258,34 @@ class TestSchedulerInitReqMaxNewTokens(unittest.TestCase):
                 self.assertEqual(req.sampling_params.max_new_tokens, 1)
 
     def test_pd_prefill_forces_one_handoff_token(self):
-        """Bug regression: a PD-prefill request whose memory budget clamps to
-        0 became is_prefill_only, so the prefill node shipped a dummy token 0
-        that the decode node committed as the user's first output token.
-        Prefill must bypass the clamps and always budget exactly one token."""
-
-        # Pool of 32 with a 30-token prompt: the memory clamp below the
-        # PREFILL branch would compute max(0, 32 - 30 - 1 - 1) = 0.
+        """A PD-prefill request budgets exactly one handoff token regardless
+        of what the user asked for, so every PP rank derives the same
+        sampling_params. A prompt the pool cannot hold together with that
+        token is rejected at intake: nothing downstream drops a request that
+        never fits, and a prefill-only 0 would ship no handoff token."""
         scheduler = self._new_scheduler(max_total_num_tokens=32)
         scheduler.disaggregation_mode = DisaggregationMode.PREFILL
 
-        req = self._new_req(max_new_tokens=64, input_len=30, min_new_tokens=8)
+        req = self._new_req(max_new_tokens=64, input_len=16, min_new_tokens=8)
         scheduler.init_req_max_new_tokens(req)
         self.assertEqual(req.sampling_params.max_new_tokens, 1)
         self.assertEqual(req.sampling_params.min_new_tokens, 1)
 
         # Without a user minimum, EOS stays legal as the handoff token.
-        req = self._new_req(max_new_tokens=None, input_len=30, min_new_tokens=0)
+        req = self._new_req(max_new_tokens=None, input_len=16, min_new_tokens=0)
         scheduler.init_req_max_new_tokens(req)
         self.assertEqual(req.sampling_params.max_new_tokens, 1)
+        self.assertEqual(req.sampling_params.min_new_tokens, 0)
+
+        # Pool of 32 with a 30-token prompt: the memory clamp computes
+        # max(0, 32 - 30 - 1 - 1) = 0, so prompt + handoff token never fit.
+        aborts = []
+        req = self._new_req(max_new_tokens=64, input_len=30, min_new_tokens=8)
+        req.set_finish_with_abort = aborts.append
+        scheduler.init_req_max_new_tokens(req)
+        self.assertEqual(len(aborts), 1)
+        self.assertIn("exceeds the KV memory budget", aborts[0])
+        self.assertEqual(req.sampling_params.max_new_tokens, 0)
         self.assertEqual(req.sampling_params.min_new_tokens, 0)
 
 

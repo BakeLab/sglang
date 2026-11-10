@@ -2963,18 +2963,18 @@ class Scheduler(
         )
 
     def init_req_max_new_tokens(self, req):
-        # PD prefill never decodes: budget the single handoff token and return
-        # before the clamps, which could only lower it to a dummy prefill-only
-        # 0. Constant output: every PP rank must derive the same
-        # sampling_params (rank consensus hashes them).
-        if self.disaggregation_mode == DisaggregationMode.PREFILL:
+        is_pd_prefill = self.disaggregation_mode == DisaggregationMode.PREFILL
+        if is_pd_prefill:
+            # PD prefill never decodes: budget the single handoff token before
+            # the clamps so every PP rank derives the same sampling_params
+            # (rank consensus hashes them). The clamps below still run: they
+            # keep the 1 unless the prompt itself does not fit the pool.
             req.sampling_params.max_new_tokens = 1
             # min <= max invariant; EOS stays legal as the handoff token
             # unless the user set min_new_tokens.
             req.sampling_params.min_new_tokens = min(
                 req.sampling_params.min_new_tokens, 1
             )
-            return
         input_len = len(req.origin_input_ids)
         max_new_tokens = (
             req.sampling_params.max_new_tokens
@@ -3035,6 +3035,13 @@ class Scheduler(
                 f"Request prompt exceeds the KV memory budget: input_len={input_len}."
             )
             max_new_tokens = 0
+        elif is_pd_prefill and max_new_tokens < 1:
+            # The pool cannot hold the prompt and its handoff token together.
+            # Reject here: no later admission check drops a request that can
+            # never fit, and a prefill-only 0 would ship no handoff token.
+            req.set_finish_with_abort(
+                f"Request prompt exceeds the KV memory budget: input_len={input_len}."
+            )
 
         req.sampling_params.max_new_tokens = max(0, max_new_tokens)
         # Clipping above can push max_new_tokens below min_new_tokens, which

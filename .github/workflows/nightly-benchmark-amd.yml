@@ -16,7 +16,7 @@ on:
         required: false
         default: 'all'
         type: choice
-        options: [all, dsv41-flash, qwen35-mxfp4]
+        options: [all, dsv41-flash, qwen35-mxfp4, glm52-mxfp4]
       point:
         description: 'One point of the selected curve (e.g. tp2-c16); empty runs the whole curve. Ignored with "all".'
         required: false
@@ -156,16 +156,81 @@ jobs:
             scancel $JOBS
           fi
 
+  # GLM-5.2 MXFP4 with EAGLE MTP: both ends of each of the row's three arms
+  # (TP8 on GPU KV, TP4 with HiCache host-DRAM offload, TP4 with DCP4). The
+  # row's middle points (tp8-c2, tp4-c8 to c14, tp4-dcp4-c24/c40) are left out
+  # to keep the nightly within the partition's day; dispatch runs any of them.
+  glm52-mxfp4-agentx-mi35x:
+    name: glm52-mxfp4-agentx-mi35x ${{ matrix.point }}
+    if: github.repository == 'sgl-project/sglang' && (!inputs.benchmark || inputs.benchmark == 'all' || inputs.benchmark == 'glm52-mxfp4')
+    strategy:
+      fail-fast: false
+      matrix:
+        point: ${{ fromJson(inputs.benchmark == 'glm52-mxfp4' && inputs.point && format('["{0}"]', inputs.point) || '["tp8-c1", "tp8-c4", "tp4-c4", "tp4-c16", "tp4-dcp4-c16", "tp4-dcp4-c48"]') }}
+    runs-on: linux-sglang-mi35x-perf-bench
+    timeout-minutes: 240
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      # Model load and the one-hour window; this recipe has no warmup grace.
+      # SGLANG_MOE_COPY_WEIGHT_VIEWS_BEFORE_H2D only changes how MoE weights are
+      # loaded, as every MI35x nightly model load sets it; serving is unchanged.
+      - name: Run point on a cluster node
+        timeout-minutes: 230
+        env:
+          AGENTX_POINT: ${{ matrix.point }}
+          MATRIX_CONFIG_NAME: ${{ matrix.point }}
+          TIME_LIMIT: '03:40:00'
+        run: |
+          bash scripts/ci/slurm/launch_amd_ci_mi35x.sh \
+            --suite nightly-perf-8-gpu-mi35x-agentx \
+            --env AGENTX_CONFIG_KEY=glm5.2-fp4-mi355x-sglang-agentic-mtp \
+            --env "AGENTX_POINT=$AGENTX_POINT" \
+            --env SGLANG_MOE_COPY_WEIGHT_VIEWS_BEFORE_H2D=1 \
+            -- --nightly --timeout-per-file 12600
+
+      - name: Summarize
+        if: always()
+        run: cat ci_artifacts/*.md >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
+
+      - name: Upload result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agentx-glm52mxfp4-${{ matrix.point }}
+          path: ci_artifacts/*.json
+          if-no-files-found: ignore
+          retention-days: 90
+          # A re-run attempt replaces the earlier attempt's result.
+          overwrite: true
+
+      - name: Cancel cluster jobs on failure/cancel
+        if: failure() || cancelled()
+        continue-on-error: true
+        run: |
+          # Same prefix launch_amd_ci_mi35x.sh names its jobs with. %200j widens
+          # the name column; Spur's squeue does not accept --me.
+          PREFIX="amd-ci-${RUNNER_NAME}-${GITHUB_RUN_ID}-"
+          JOBS=$(squeue --noheader --format="%i %200j" | grep -F "$PREFIX" | awk '{print $1}' || true)
+          if [ -n "$JOBS" ]; then
+            echo "Cancelling: $JOBS"
+            scancel $JOBS
+          fi
+
   # One JSON list of the points' records per curve and run, read by the sglang-ci-bot daily report.
   agentx-summary:
     name: agentx-summary ${{ matrix.slug }}
-    needs: [dsv41-flash-agentx-mi35x, qwen35-mxfp4-agentx-mi35x]
+    needs: [dsv41-flash-agentx-mi35x, qwen35-mxfp4-agentx-mi35x, glm52-mxfp4-agentx-mi35x]
     if: always() && github.repository == 'sgl-project/sglang'
     strategy:
       matrix:
         include:
           - { benchmark: dsv41-flash, slug: dsv41flash }
           - { benchmark: qwen35-mxfp4, slug: qwen35mxfp4 }
+          - { benchmark: glm52-mxfp4, slug: glm52mxfp4 }
     runs-on: ubuntu-latest
     env:
       SELECTED: ${{ !inputs.benchmark || inputs.benchmark == 'all' || inputs.benchmark == matrix.benchmark }}

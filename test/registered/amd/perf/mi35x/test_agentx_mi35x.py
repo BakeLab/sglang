@@ -1,9 +1,9 @@
 """MI35x InferenceX AgentX curves, one point per run.
 
-Runs the point AGENTX_POINT (``tp2-c1``, ``tp2-dpa-c64``, ...) of the InferenceX
-AgentX sweep AGENTX_CONFIG_KEY (an amd-master.yaml key, e.g.
+Runs the point AGENTX_POINT (``tp2-c1``, ``tp2-dpa-c64``, ``tp4-dcp4-c16``, ...)
+of the InferenceX AgentX sweep AGENTX_CONFIG_KEY (an amd-master.yaml key, e.g.
 ``dsv41flash-fp4-mi355x-sglang-agentic-dspark`` or
-``qwen3.5-fp4-mi355x-sglang-agentic-mtp``) against this checkout. The point's
+``glm5.2-fp4-mi355x-sglang-agentic-mtp``) against this checkout. The point's
 server flags, env, golden acceptance length and the AgentX client all come from
 InferenceX at INFERENCEX_COMMIT, bound by its own srt-slurm planner, so a result
 is comparable with InferenceX's for the same image. The only departures are CI
@@ -71,26 +71,29 @@ def _checkout_inferencex() -> Path:
 
 
 def _matrix_entry(master: dict, point: str) -> tuple:
-    """``(scenario, entry, tp, dp_attention, conc)`` for ``point`` (``tp<N>[-dpa]-c<CONC>``)."""
-    match = re.fullmatch(r"tp(\d+)(-dpa)?-c(\d+)", point)
+    """``(scenario, entry, tp, dp_attention, dcp, conc)`` for ``point``
+    (``tp<N>[-dpa][-dcp<M>]-c<CONC>``)."""
+    match = re.fullmatch(r"tp(\d+)(-dpa)?(?:-dcp(\d+))?-c(\d+)", point)
     if not match:
         raise ValueError(
-            f"AGENTX_POINT must look like tp2-c1 or tp2-dpa-c64: {point!r}"
+            f"AGENTX_POINT must look like tp2-c1, tp2-dpa-c64 or tp4-dcp4-c16: {point!r}"
         )
-    tp, dp_attention, conc = int(match[1]), bool(match[2]), int(match[3])
+    tp, dp_attention = int(match[1]), bool(match[2])
+    dcp, conc = int(match[3] or 1), int(match[4])
     entries = [
         (scenario, entry)
         for scenario in master["scenarios"]["agentic-coding"]
         for entry in scenario["search-space"]
         if entry["tp"] == tp
         and bool(entry.get("dp-attn")) == dp_attention
+        and entry.get("dcp-size", 1) == dcp
         and conc in entry["conc-list"]
     ]
     if len(entries) != 1:
         raise ValueError(
             f"{point} is not one point of {CONFIG_KEY} at InferenceX {INFERENCEX_COMMIT}"
         )
-    return *entries[0], tp, dp_attention, conc
+    return *entries[0], tp, dp_attention, dcp, conc
 
 
 def _bind_point(e2e: Path, point: str) -> tuple:
@@ -104,7 +107,9 @@ def _bind_point(e2e: Path, point: str) -> tuple:
 
     master = yaml.safe_load((e2e / "configs" / "amd-master.yaml").read_text())
     master = master[CONFIG_KEY]
-    scenario, entry, tp, dp_attention, conc = _matrix_entry(master=master, point=point)
+    scenario, entry, tp, dp_attention, dcp, conc = _matrix_entry(
+        master=master, point=point
+    )
     # The host-DRAM budget InferenceX's matrix gives a KV-offload point; 0 otherwise.
     total_cpu_dram_gb, _ = agentic_dram_offload_gb(
         scenario,
@@ -123,7 +128,7 @@ def _bind_point(e2e: Path, point: str) -> tuple:
         "TP": str(tp),
         "EP_SIZE": str(entry["ep"]),
         "PP_SIZE": "1",
-        "DCP_SIZE": "1",
+        "DCP_SIZE": str(dcp),
         "PCP_SIZE": "1",
         "DP_ATTENTION": "true" if dp_attention else "false",
         "GPU_COUNT": str(tp),

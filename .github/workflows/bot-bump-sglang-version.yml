@@ -64,13 +64,6 @@ jobs:
       rocm_version: rocm10
     secrets: inherit
 
-  run-nightly-tests-npu:
-    needs: bump-sglang-version
-    uses: ./.github/workflows/nightly-test-npu.yml
-    with:
-      ref: ${{ needs.bump-sglang-version.outputs.branch_name }}
-    secrets: inherit
-
   run-pr-tests-xeon:
     needs: bump-sglang-version
     uses: ./.github/workflows/pr-test-xeon.yml

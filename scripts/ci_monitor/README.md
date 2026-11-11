@@ -4,7 +4,7 @@ Scripts used by [.github/workflows/ci-failure-monitor.yml](../../.github/workflo
 
 ## Tools
 
-1. **Failures Analyzer** (`ci_failures_analysis.py`): Tracks consecutive failures, identifies flaky jobs, and monitors runner health across PR Test / Nightly workflows (Nvidia, AMD, Intel, XPU, NPU).
+1. **Failures Analyzer** (`ci_failures_analysis.py`): Tracks consecutive failures, identifies flaky jobs, and monitors runner health across PR Test / Nightly workflows (Nvidia, AMD, Intel, XPU).
 2. **Lark Notifier** (`lark_notify.py`): Posts CUDA CI health cards to a Lark group through an incoming webhook (`LARK_WEBHOOK` secret). Stdlib only. Three subcommands:
    - `ci-status --run-id N`: one card per finished scheduled run of the Nvidia nightly / weekly / scheduled pr-test. The first attempt lists its failed jobs; a rerun (attempt N > 1) is compared with attempt N-1 of the same run (fixed by rerun / still failing). Triggered by `workflow_run`.
    - `runner-health --state-file F`: per-pool online / offline counts for the primary CUDA labels (`N-gpu-h100|h200|h20|5090|b200|b300|gb200|gb300`). Posts only on degraded / recovered transitions plus a reminder every `--remind-hours` (6h in CI) while degraded; state is carried between runs via `actions/cache`. Needs an admin PAT to list runners.

@@ -16,7 +16,6 @@ Usage:
 
 import ast
 import json
-import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -47,18 +46,6 @@ BASELINE_PLATFORM_ORDER = ("h100", "b200", "5090")
 RUN_SUITE_REL_PATH = (
     "python/sglang/multimodal_gen/test/runner/diffusion_suite_runner.py"
 )
-
-USE_NPU_CONFIGS = os.getenv("USE_NPU_CONFIGS", "0").lower() in ("1", "true")
-
-if USE_NPU_CONFIGS:
-    BASELINE_REL_PATH = (
-        "python/sglang/multimodal_gen/test/server/perf_baselines_npu.json"
-    )
-    CASE_LIST_TO_SUITE = {
-        "ONE_NPU_CASES": "1-npu",
-        "TWO_NPU_CASES": "2-npu",
-    }
-
 
 @dataclass
 class DiffusionCaseInfo:

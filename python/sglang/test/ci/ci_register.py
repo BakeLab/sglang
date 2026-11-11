@@ -31,9 +31,14 @@ class HWBackend(Enum):
     CPU = auto()
     CUDA = auto()
     AMD = auto()
+    # Retained for coverage report labels and synthetic multimodal_gen records,
+    # not as test registration markers.
+    NPU = auto()
     XPU = auto()
+    MUSA = auto()
     MLX = auto()
     MPS = auto()
+    MLU = auto()
 
 
 @dataclass

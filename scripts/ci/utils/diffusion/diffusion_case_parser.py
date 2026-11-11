@@ -47,6 +47,7 @@ RUN_SUITE_REL_PATH = (
     "python/sglang/multimodal_gen/test/runner/diffusion_suite_runner.py"
 )
 
+
 @dataclass
 class DiffusionCaseInfo:
     """Information about a single diffusion test case."""

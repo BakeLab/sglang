@@ -1012,12 +1012,9 @@ def _extract_legacy_suites(content):
 # Mirrors `REGISTER_MAPPING` in python/sglang/test/ci/ci_register.py.
 _OTHER_BACKEND_REGISTERS = {
     "register_amd_ci": "AMD",
-    "register_npu_ci": "NPU",
     "register_xpu_ci": "XPU",
-    "register_musa_ci": "MUSA",
     "register_mlx_ci": "MLX",
     "register_mps_ci": "MPS",
-    "register_mlu_ci": "MLU",
 }
 
 

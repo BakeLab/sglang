@@ -55,8 +55,7 @@ For existing PRs, update the branch to include the registry, handler, and gate
 changes, then push to create fresh runs. Rerunning an older run keeps its original
 workflow revision and label behavior.
 
-The registry also contains `nv` and `amd` Base selections, and `ppu`, selecting
-`pr-test-ppu.yml` with `run-ci-ppu`. PPU keeps its existing path filters. Each opt-in workflow
+The registry also contains `nv` and `amd` Base selections. Each opt-in workflow
 requires its dedicated label through `require-label` in `pr-gate.yml`, in
 addition to `run-ci`. Register each opt-in workflow under its matching tier.
 

@@ -10,6 +10,7 @@ on:
         options:
           - 'all'
           - publish
+          - push_local_registry
       gpu_arch:
         description: 'Select which ROCm 7.2 GPU arch to build'
         required: false
@@ -89,7 +90,7 @@ jobs:
           echo "Pretend version for pip: ${PRETEND_VERSION}"
 
       - name: Login to Docker Hub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_AMD_USERNAME }}
           password: ${{ secrets.DOCKERHUB_AMD_TOKEN }}
@@ -147,7 +148,7 @@ jobs:
 
       - name: Login to Docker Hub (lmsys)
         if: env.PUSH_IMAGES == 'true'
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -166,7 +167,7 @@ jobs:
   # of publish failed; legs without an artifact will fail at download and be
   # the only ones marked red.
   push_local_registry:
-    if: ${{ false }}
+    if: github.repository == 'sgl-project/sglang' && github.event_name == 'workflow_dispatch' && inputs.job_select == 'push_local_registry'
     runs-on: linux-mi300-1gpu-sglang
     environment: 'prod'
     needs: publish
@@ -191,7 +192,7 @@ jobs:
           echo "Resolved IMAGE_TAG=${image_tag}"
 
       - name: Login to Docker Hub (AMD)
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_AMD_USERNAME }}
           password: ${{ secrets.DOCKERHUB_AMD_TOKEN }}

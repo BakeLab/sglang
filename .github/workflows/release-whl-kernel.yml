@@ -18,7 +18,6 @@ on:
           - 'cu130'
           - 'rocm720'
           - 'rocm1000'
-          - 'musa43'
       tag_name:
         description: "Version number, must be in the form of vX.Y.Z (e.g. v0.4.0)"
         type: string
@@ -166,7 +165,6 @@ jobs:
           git add -A
           git commit -m "update whl index"
           git push
-
   build-rocm-matrix:
     if: |
       github.repository == 'sgl-project/sglang' &&
@@ -316,108 +314,6 @@ jobs:
 
       - name: Update wheel index
         run: python3 scripts/update_kernel_whl_index.py --rocm 1000
-
-      - name: Push wheel index
-        run: |
-          cd sgl-whl
-          git config --local user.name "sglang-bot"
-          git config --local user.email "sglangbot@gmail.com"
-          git add -A
-          git commit -m "update whl index"
-          git push
-
-  build-musa43:
-    if: |
-      github.repository == 'sgl-project/sglang' &&
-      (github.event_name == 'push' || github.event.inputs.target == 'all' || github.event.inputs.target == 'musa43')
-    runs-on: kernel-build-node-musa
-    strategy:
-      matrix:
-        python-version: ["3.10"]
-        musa-version: ["43"]
-    steps:
-      # Self-hosted build nodes retain the workspace across jobs. Prior builds
-      # leave root-owned artifacts under python/sglang/kernels/aot/build/ that actions/checkout
-      # cannot remove, causing EACCES on rmdir. Wipe them via a throwaway root
-      # container before checkout recreates the workspace.
-      - name: Clean workspace (remove root-owned files from prior runs)
-        run: |
-          docker run --rm -v "${{ github.workspace }}:/workspace" alpine:3 \
-            sh -c 'rm -rf /workspace/..?* /workspace/.[!.]* /workspace/*' || true
-
-      - uses: actions/checkout@v4
-        with:
-          submodules: "recursive"
-
-      - name: Clean stale torchada extension locks
-        run: |
-          if ps -eo comm=,args= | grep -E '(^|[[:space:]])(mcc|ninja)([[:space:]]|$)|torchada_cpp_ops' | grep -v grep; then
-            echo "::error::Active torchada extension build detected; refusing to remove lock files"
-            exit 1
-          fi
-          find "${HOME}/.cache/torch_extensions" \
-            -path '*/torchada_cpp_ops/lock' \
-            -type f \
-            -print \
-            -delete 2>/dev/null || true
-
-      - name: Build wheels
-        run: |
-          cd python/sglang/kernels/aot
-          mv pyproject_musa.toml pyproject.toml
-          python setup_musa.py sdist bdist_wheel
-
-      - name: Rename MUSA wheels
-        run: |
-          bash scripts/ci/musa/rename_wheels_musa.sh ${{ matrix.musa-version }} python/sglang/kernels/aot/dist
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: wheel-python${{ matrix.python-version }}-musa${{ matrix.musa-version }}
-          path: python/sglang/kernels/aot/dist/*
-
-  release-musa43:
-    needs: build-musa43
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: python/sglang/kernels/aot/dist/
-          merge-multiple: true
-          pattern: wheel-*
-
-      - name: Set tag name
-        id: set_tag_name
-        run: |
-          if [ -z "${{ inputs.tag_name }}" ]; then
-            TAG_NAME="v$(cat python/sglang/kernels/aot/python/sgl_kernel/version.py | cut -d'"' -f2)"
-          else
-            TAG_NAME="${{ inputs.tag_name }}"
-          fi
-          # Prefix with the package name so the release tag in sgl-project/whl
-          # does not collide with other packages that share the version number.
-          echo "tag_name=sglang-kernel-${TAG_NAME}" >> $GITHUB_OUTPUT
-
-      - name: Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.set_tag_name.outputs.tag_name }}
-          repository: sgl-project/whl
-          token: ${{ secrets.GH_PAT_FOR_WHL_RELEASE }}
-          files: |
-            python/sglang/kernels/aot/dist/*
-
-      - name: Clone wheel index
-        run: git clone https://oauth2:${WHL_TOKEN}@github.com/sgl-project/whl.git sgl-whl
-        env:
-          WHL_TOKEN: ${{ secrets.GH_PAT_FOR_WHL_RELEASE }}
-
-      - name: Update wheel index
-        run: python3 scripts/update_kernel_whl_index.py --musa 43
 
       - name: Push wheel index
         run: |

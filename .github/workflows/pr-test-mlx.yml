@@ -8,12 +8,12 @@ on:
       # target_stage is the job id (e.g. stage-b-e2e-test-mlx), distinct from
       # the run_suite.py suite name it dispatches (e.g. stage-b-e2e-mlx).
       target_stage:
-        description: "Select a stage to run from dropdown (leave empty for auto-detect)"
+        description: "Select a stage to run from dropdown (auto detects changed stages)"
         required: false
         type: choice
-        default: ''
+        default: auto
         options:
-          - ''
+          - auto
           - stage-a-unit-test-mlx
           - stage-b-e2e-test-mlx
           - stage-a-unit-test-mps
@@ -30,7 +30,7 @@ jobs:
     outputs:
       changes_exist: ${{ steps.filter.outputs.main_package == 'true'
         || steps.filter.outputs.sgl_kernel == 'true'
-        || inputs.target_stage != '' }}
+        || inputs.target_stage != 'auto' }}
       main_package: ${{ steps.filter.outputs.main_package }}
       sgl_kernel: ${{ steps.filter.outputs.sgl_kernel }}
     steps:

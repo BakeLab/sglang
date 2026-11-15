@@ -27,12 +27,8 @@ _MARKERS = (
     "register_cuda_ci",
     "register_amd_ci",
     "register_cpu_ci",
-    "register_npu_ci",
     "register_xpu_ci",
-    "register_musa_ci",
     "register_mps_ci",
-    "register_ppu_ci",
-    "register_mlu_ci",
 )
 
 

@@ -34,6 +34,7 @@ jobs:
     if: github.repository == 'sgl-project/sglang'
     runs-on: ubuntu-latest
     outputs:
+      commit: ${{ steps.meta.outputs.commit }}
       image_repo: ${{ steps.meta.outputs.image_repo }}
       tag: ${{ steps.meta.outputs.tag }}
       tag_rolling: ${{ steps.meta.outputs.tag_rolling }}
@@ -87,7 +88,7 @@ jobs:
 
       - name: Login to Docker Hub
         if: github.event_name == 'schedule' || !inputs.build_only
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -114,9 +115,9 @@ jobs:
             --build-arg BUILD_JOBS="$(nproc)" \
             --build-arg MANYLINUX_IMAGE="${{ matrix.manylinux_image }}" \
             --build-arg SGL_NVIDIA_MEGA_REF=${{ steps.mega.outputs.commit }} \
-            --build-arg SGLANG_BUILD_COMMIT=${{ steps.meta.outputs.commit }} \
+            --build-arg SGLANG_BUILD_COMMIT=${{ needs.meta.outputs.commit }} \
             --build-arg SGLANG_BUILD_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
-            --build-arg SGLANG_IMAGE_TAG="${{ steps.meta.outputs.image_repo }}:${{ steps.meta.outputs.tag }}" \
+            --build-arg SGLANG_IMAGE_TAG="${{ needs.meta.outputs.image_repo }}:${{ needs.meta.outputs.tag }}" \
             -f docker/Dockerfile.cu134 \
             -t "${IMAGE_ARCH_REF}" \
             .
@@ -173,7 +174,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Login to Docker Hub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}

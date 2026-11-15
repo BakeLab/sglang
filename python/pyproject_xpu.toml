@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0", "setuptools-rust>=1.10", "setuptools-scm>=8.0", "torch==2.14.0+xpu", "triton-xpu", "wheel"]
+requires = ["setuptools>=61.0", "setuptools-rust>=1.10", "setuptools-scm>=8.0", "torch>=2.15,<2.16", "triton-xpu", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -64,10 +64,10 @@ dependencies = [
   "soundfile==0.13.1",
   "tiktoken",
   "timm==1.0.25",
-  "torch==2.14.0+xpu",
-  "torchaudio==2.11.0+xpu",
-  "torchcodec==0.17.0 ; sys_platform != 'linux' or (sys_platform == 'linux' and platform_machine != 'aarch64' and platform_machine != 'arm64' and platform_machine != 'armv7l')", # torch==2.14.0 on XPU uses torchcodec 0.17.0
-  "torchvision==0.29.0+xpu",
+  "torch>=2.15,<2.16",
+  "torchaudio>=2.15,<2.16",
+  "torchcodec==0.17.0",
+  "torchvision>=0.30,<0.31",
   "tqdm",
   "transformers==5.19.0",
   "triton-xpu",

@@ -1,16 +1,4 @@
 {
-  "nv-extra": {
-    "label": "run-ci-nv-extra",
-    "workflows": [
-      ".github/workflows/pr-test-extra.yml"
-    ]
-  },
-  "amd-extra": {
-    "label": "run-ci-amd-extra",
-    "workflows": [
-      ".github/workflows/pr-test-amd-extra.yml"
-    ]
-  },
   "amd": {
     "label": null,
     "workflows": [

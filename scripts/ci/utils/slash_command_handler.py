@@ -1937,39 +1937,25 @@ def main():
     command = tokens[0] if tokens else ""
     tiers = _load_opt_in_tiers()
 
-    # Extra and Full require an explicit hardware selection. Never fall back
-    # to shared labels or broad retries for missing or misspelled arguments.
     if command in (
         "/run-extra-ci",
         "/rerun-extra-ci",
         "/run-full-ci",
         "/rerun-full-ci",
+        "/run-nv-extra-ci",
+        "/rerun-nv-extra-ci",
+        "/run-amd-extra-ci",
+        "/rerun-amd-extra-ci",
+    ) or (
+        (
+            command.startswith("/tag-run-ci-label")
+            or command.startswith("/tag-and-rerun-ci")
+        )
+        and any(tier in tokens[1:] for tier in ("nv-extra", "amd-extra"))
     ):
-        hardware = tokens[1] if len(tokens) == 2 else ""
-        extra_tier = tiers.get(f"{hardware}-extra")
-        base_tier = tiers.get(hardware)
-        full = command in ("/run-full-ci", "/rerun-full-ci")
-        if extra_tier is None or (full and base_tier is None):
-            choices = ", ".join(
-                f"`{name.removesuffix('-extra')}`"
-                for name in sorted(tiers)
-                if name.endswith("-extra")
-                and (not full or name.removesuffix("-extra") in tiers)
-            )
-            pr.create_issue_comment(
-                f"⛔ `{command}` requires exactly one hardware argument: {choices}. "
-                "The shared `run-ci-extra` label is retired. "
-                "No labels were added and no workflows were re-run."
-            )
-            comment.create_reaction("confused")
-            return
-        handle_run_tier_ci(
-            repo,
-            pr,
-            comment,
-            user_perms,
-            base_tier if full else extra_tier,
-            additional_tiers=[extra_tier] if full else (),
+        pr.create_issue_comment(
+            "Extra CI now runs automatically in Gitea on branch pushes. "
+            "No opt-in labels are required; see https://gitea.int.bb.pub/BakeLab/sglang/actions."
         )
         return
 
@@ -1999,24 +1985,14 @@ def main():
     is_tag_and_rerun = first_line.startswith("/tag-and-rerun-ci")
     run_tier_match = RUN_TIER_COMMAND.match(command)
     run_tier = run_tier_match and tiers.get(run_tier_match.group(1))
-    if run_tier and run_tier_match.group(1).endswith("-extra") and len(tokens) != 1:
-        pr.create_issue_comment(
-            f"⛔ `{command}` accepts no arguments. Use `/run-extra-ci nv` or "
-            "`/run-extra-ci amd` to select hardware. "
-            "No labels were added and no workflows were re-run."
-        )
-        comment.create_reaction("confused")
-        return
-
-    # Tier arguments (`/tag-run-ci-label nv-extra`) are shared by both labeling
+    # Registered tier arguments are shared by both labeling
     # commands so the surface is symmetric.
     tier_names = []
     if is_tag or is_tag_and_rerun:
         if "extra" in tokens[1:]:
             pr.create_issue_comment(
                 "⛔ The shared `extra` tier and `run-ci-extra` label are retired. "
-                "Use `nv-extra` or `amd-extra`, or `/run-extra-ci nv` or "
-                "`/run-extra-ci amd` for hardware-specific reruns. "
+                "Extra CI runs automatically in Gitea. "
                 "No labels were added and no workflows were re-run."
             )
             comment.create_reaction("confused")

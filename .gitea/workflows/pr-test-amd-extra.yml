@@ -1,35 +1,30 @@
 name: PR Test Extra (AMD)
-# Label-gated AMD extra CI workflow — the AMD mirror of pr-test-extra.yml.
-#
-# Adds AMD runtime to a PR only when the author opts in: the PR must carry
-# `run-ci` plus `run-ci-amd-extra` (AMD Extra opt-in).
-# The label check happens at runtime in pr-gate.yml via a live
-# `gh pr view`-style fetch, so reruns after adding the labels (e.g. via a
-# slash command) pick up the new label set — a workflow-level `if` would read
-# the frozen event payload, which never updates on rerun. The job graph also
-# runs unconditionally on workflow_dispatch / workflow_call so it can be
-# triggered manually or chained from the AMD scheduler.
-#
-# Stages: extra-a and extra-b. Each job mirrors the container bring-up of
-# pr-test-amd.yml and dispatches `run_suite.py --hw amd --suite
-# {stage}-test-{config}-amd`:
-#   - extra-a 1-gpu-small: mock-model / kv_canary unit + single-GPU canary e2e
-#                          tests, plus LoRA eviction/drainer, priority
-#                          scheduling, torch-native attention
-#   - extra-a 1-gpu-large: single-GPU model e2e tests (quant fp8kv-triton,
-#                          sessions, spec standalone triton, basic_perf
-#                          throughput/latency, torch.compile, VLM models)
-#   - extra-a 2-gpu-large: multi-GPU (TP/PP/PD) mock-model + kv_canary e2e
-#                          tests, PP/MoE throughput, distributed weight update
-#   - extra-b 4-gpu:       PP extra configs, gpt-oss-20b LoRA logprob diff
-# Everything here is in CUDA's extra tier too.
-# kv_canary e2e is registered to the same extra-a stage as its CUDA siblings
-# (it now exercises the ROCm canary kernels end-to-end).
+# Gitea-only extra CI; BB matches exact hardware labels and available capacity.
 
 on:
-  # No `labeled` trigger, as in pr-test-extra.yml: a label event would cancel
-  # the run in progress. Adding the labels after a push takes a rerun.
+  push:
+    branches: ["**"]
+    paths:
+      - "python/**"
+      - "rust/**"
+      - "proto/**"
+      - "test/**"
+      - "scripts/ci/**"
+      - ".github/workflows/_pr-test-*.yml"
+      - ".github/actions/**"
+      - ".gitea/workflows/**"
+      - "docker/rocm.Dockerfile"
   pull_request:
+    paths:
+      - "python/**"
+      - "rust/**"
+      - "proto/**"
+      - "test/**"
+      - "scripts/ci/**"
+      - ".github/workflows/_pr-test-*.yml"
+      - ".github/actions/**"
+      - ".gitea/workflows/**"
+      - "docker/rocm.Dockerfile"
   workflow_dispatch:
     inputs:
       runner_arch:
@@ -109,7 +104,7 @@ concurrency:
   # pending runs. PR runs still share a per-branch group so pushes cancel stale
   # runs. In a reusable workflow github.event_name is the originating event.
   group: pr-test-amd-extra-${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && format('full-{0}-{1}', github.run_id, inputs.rocm_version || 'rocm10') || github.head_ref || github.ref_name || inputs.ref || 'default' }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
 
 permissions:
   actions: write
@@ -118,24 +113,36 @@ permissions:
   pull-requests: read
 
 jobs:
-  # =============================================== PR Gate ====================================================
-  # Runtime live-fetch label gate (mirrors pr-test-extra.yml's call-gate):
-  # requires `run-ci` and `run-ci-amd-extra`. A failure cascades to
-  # every test job via `needs`, so a PR without the labels ends in one red
-  # ~30s gate job plus a row of skipped jobs instead of consuming AMD runners.
-  call-gate:
-    uses: ./.github/workflows/pr-gate.yml
-    with:
-      require-run-ci: true
-      require-label: run-ci-amd-extra
-    secrets: inherit
+  check-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      runtime: ${{ steps.filter.outputs.runtime }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          fetch-depth: 0
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          token: ''
+          base: trim
+          ref: ${{ inputs.ref || github.sha }}
+          filters: |
+            runtime:
+              - 'python/**'
+              - 'test/**'
+              - 'scripts/ci/**'
+              - '.github/actions/**'
+              - 'docker/rocm.Dockerfile'
+              - '.gitea/workflows/pr-test-amd-extra.yml'
 
   # =============================================== extra-a (1-gpu-small) ===============================================
   # ~1.5h of tests in total; four shards keep each well under the step timeout.
   extra-a-test-1-gpu-small-amd:
+    needs: check-changes
+    if: needs.check-changes.outputs.runtime == 'true' || github.event_name == 'workflow_dispatch'
     name: ${{ format('extra-a-test-1-gpu-small-amd ({0}, linux-{1}-1gpu-sglang, {2})', inputs.rocm_version || 'rocm10', inputs.runner_arch || 'mi300', matrix.part) }}
-    needs: [call-gate]
-    if: ${{ !cancelled() && needs.call-gate.result == 'success' }}
     strategy:
       fail-fast: false
       matrix:
@@ -170,9 +177,9 @@ jobs:
   # 1-gpu pool as small (AMD GPUs carry enough VRAM that "large" here is a
   # CUDA memory-tier label, not a separate AMD runner pool). ~50 min in total.
   extra-a-test-1-gpu-large-amd:
+    needs: check-changes
+    if: needs.check-changes.outputs.runtime == 'true' || github.event_name == 'workflow_dispatch'
     name: ${{ format('extra-a-test-1-gpu-large-amd ({0}, linux-{1}-1gpu-sglang, {2})', inputs.rocm_version || 'rocm10', inputs.runner_arch || 'mi300', matrix.part) }}
-    needs: [call-gate]
-    if: ${{ !cancelled() && needs.call-gate.result == 'success' }}
     strategy:
       fail-fast: false
       matrix:
@@ -205,9 +212,9 @@ jobs:
   # throughput. Mirrors CUDA's extra-a 2-gpu-large stage; runs on the 2-GPU
   # AMD pool.
   extra-a-test-2-gpu-large-amd:
+    needs: check-changes
+    if: needs.check-changes.outputs.runtime == 'true' || github.event_name == 'workflow_dispatch'
     name: ${{ format('extra-a-test-2-gpu-large-amd ({0}, linux-{1}-2gpu-sglang, {2})', inputs.rocm_version || 'rocm10', inputs.runner_arch || 'mi300', matrix.part) }}
-    needs: [call-gate]
-    if: ${{ !cancelled() && needs.call-gate.result == 'success' }}
     strategy:
       fail-fast: false
       matrix:
@@ -239,9 +246,9 @@ jobs:
   # 4-GPU tests that CUDA runs in extra-b. Same container env as the
   # stage-c-test-4-gpu-amd job in pr-test-amd.yml.
   extra-b-test-4-gpu-amd:
+    needs: check-changes
+    if: needs.check-changes.outputs.runtime == 'true' || github.event_name == 'workflow_dispatch'
     name: ${{ format('extra-b-test-4-gpu-amd ({0}, linux-{1}-4gpu-sglang)', inputs.rocm_version || 'rocm10', inputs.runner_arch || 'mi300') }}
-    needs: [call-gate]
-    if: ${{ !cancelled() && needs.call-gate.result == 'success' }}
     runs-on: ${{ format('linux-{0}-4gpu-sglang', inputs.runner_arch || 'mi300') }}
     steps:
       - name: Checkout code
@@ -274,11 +281,11 @@ jobs:
   # =============================================== aggregator ====================================================
   # Single fan-in job so branch protection / notifications depend on one job
   # rather than every matrix leg. Fails if any dependent failed or was
-  # cancelled; `skipped` (e.g. PR without the opt-in labels) is not a failure.
+  # cancelled; `skipped` (e.g. unrelated changes) is not a failure.
   pr-test-amd-extra-finish:
     needs:
       [
-        call-gate,
+        check-changes,
         extra-a-test-1-gpu-small-amd,
         extra-a-test-1-gpu-large-amd,
         extra-a-test-2-gpu-large-amd,

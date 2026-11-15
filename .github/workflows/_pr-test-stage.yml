@@ -138,8 +138,10 @@ jobs:
         run: echo "SGLANG_CI_RDMA_ALL_DEVICES=${{ steps.rc.outputs.rdma_devices || '' }}" >> "$GITHUB_ENV"
 
       - uses: ./.github/actions/check-pr-test-health
+        if: github.server_url == 'https://github.com'
 
       - uses: ./.github/actions/check-maintenance
+        if: github.server_url == 'https://github.com'
 
       - name: Download artifacts (v4)
         if: ${{ fromJson(inputs.check_changes).sgl_kernel == 'true' && steps.rc.outputs.artifact_version == 'v4' }}

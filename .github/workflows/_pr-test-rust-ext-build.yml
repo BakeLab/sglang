@@ -102,6 +102,7 @@ jobs:
           sparse-checkout-cone-mode: false
 
       - uses: ./.github/actions/check-maintenance
+        if: github.server_url == 'https://github.com'
 
       # A no-op on the hosted default, which ships zstd; here for whatever
       # restore_runs_on is pointed at, since a reader without it sees no entry.
@@ -180,6 +181,7 @@ jobs:
           ref: ${{ inputs.git_ref || github.sha }}
 
       - uses: ./.github/actions/check-maintenance
+        if: github.server_url == 'https://github.com'
 
       - name: Set up Python ${{ matrix.python-version }}
         id: py

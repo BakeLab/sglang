@@ -14,7 +14,7 @@ on:
   pull_request_target:
     types: [opened, synchronize, reopened, labeled, unlabeled]
   workflow_run:
-    workflows: ["PR Test Base", "PR Test Extra", "PR Test (AMD)"]
+    workflows: ["PR Test Base", "PR Test (AMD)"]
     types: [requested, completed]
   workflow_dispatch:
     inputs:
@@ -111,7 +111,6 @@ jobs:
             const sha = pr.head.sha;
             const labels = pr.labels.map(l => l.name);
             const hasCI = labels.includes('run-ci');
-            const hasNvExtra = labels.includes('run-ci-nv-extra');
 
             // Pre-sleep below only matters when a label was just removed;
             // other no-label fires don't race against fresh indexing.
@@ -151,19 +150,13 @@ jobs:
             const labelOnOpts  = { preSleepMs: LABEL_ON_PRESLEEP_MS, attempts: RETRY_ATTEMPTS, delayMs: RETRY_DELAY_MS };
             const labelOffOpts = { preSleepMs: justRemovedLabel ? LABEL_OFF_PRESLEEP_MS : 0, attempts: 1 };
 
-            // The three lookups are independent, so the added one costs no
-            // wall-clock time. The AMD lookup never spends the retry budget:
+            // The base and AMD lookups are independent. The AMD lookup never spends the retry budget:
             // that workflow has an on.pull_request.paths filter, so a missing
             // run is usually legitimate rather than an indexing race, and the
             // race resolves itself -- `requested` is in the workflow_run
             // subscription above, so a real dispatch refreshes this block.
-            const [ptRun, peRun, amdRun] = await Promise.all([
+            const [ptRun, amdRun] = await Promise.all([
               findRun('pr-test.yml', hasCI ? labelOnOpts : labelOffOpts),
-              // pr-test-extra gates on BOTH labels (see call-gate there).
-              findRun(
-                'pr-test-extra.yml',
-                (hasCI && hasNvExtra) ? labelOnOpts : labelOffOpts,
-              ),
               findRun('pr-test-amd.yml', labelOffOpts),
             ]);
 
@@ -172,9 +165,6 @@ jobs:
             const isReal = (run) => run && run.conclusion !== 'skipped';
 
             const missingCIText = ':x: **Missing `run-ci` label** -- add it to run CI tests.';
-            const peBlockedByCIText = ':x: **Blocked** -- `run-ci` is required first.';
-            const notNvExtraEnabledText = ':warning: **Not enabled** -- add `run-ci-nv-extra` label to opt in.';
-            const stalePushText = ':warning: **Not run on latest push** -- push again to dispatch.';
             // A missing run usually means the paths filter excluded the PR,
             // but pull_request workflows can also be suppressed by GitHub
             // (for example, for merge conflicts or skip annotations).
@@ -198,13 +188,7 @@ jobs:
             const ptText = isReal(ptRun)
               ? runLink(ptRun)
               : (!hasCI ? missingCIText : '_Not run yet_');
-            const peText = isReal(peRun)
-              ? runLink(peRun)
-              : !hasCI
-                ? peBlockedByCIText
-                : !hasNvExtra
-                  ? notNvExtraEnabledText
-                  : stalePushText;
+            const peText = '[Runs in Gitea](https://gitea.int.bb.pub/BakeLab/sglang/actions)';
             const amdText = isReal(amdRun)
               ? runLink(amdRun)
               : amdNotTriggeredText;

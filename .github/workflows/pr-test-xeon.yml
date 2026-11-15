@@ -50,6 +50,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           clean: false
+          fetch-depth: 0
           ref: ${{ inputs.ref || github.ref }}
 
       - name: Determine run mode
@@ -70,6 +71,9 @@ jobs:
         uses: dorny/paths-filter@v3
         if: steps.run-mode.outputs.run_all_tests != 'true'
         with:
+          token: ${{ github.server_url == 'https://github.com' && github.token || '' }}
+          base: ${{ github.server_url != 'https://github.com' && 'trim' || github.base_ref || github.event.repository.default_branch }}
+          ref: ${{ inputs.ref || github.sha }}
           filters: |
             main_package:
               - "python/sglang/!(multimodal_gen)/**/!(*.md)"
@@ -77,22 +81,19 @@ jobs:
               - "test/**/!(*.md)"
               - "python/sglang/kernels/aot/**/!(*.md|THIRDPARTYNOTICES.txt|LICENSE)"
               - ".github/workflows/pr-test-xeon.yml"
-              - ".github/workflows/pr-test-extra.yml"
+              - ".gitea/workflows/pr-test-extra.yml"
               - "docker/xeon.Dockerfile"
 
   # ==================== PR Gate ==================== #
   pr-gate:
     needs: check-changes
-    if: needs.check-changes.outputs.main_package == 'true'
+    if: github.server_url == 'https://github.com' && needs.check-changes.outputs.main_package == 'true'
     uses: ./.github/workflows/pr-gate.yml
-    with:
-      # Extra is called by the NVIDIA/shared Extra workflow; Base is unchanged.
-      require-label: ${{ inputs.extra_only == true && 'run-ci-nv-extra' || '' }}
     secrets: inherit
 
   build-test:
     needs: [check-changes, pr-gate]
-    if: needs.check-changes.outputs.main_package == 'true'
+    if: ${{ !cancelled() && needs.check-changes.outputs.main_package == 'true' && (needs.pr-gate.result == 'success' || (github.server_url != 'https://github.com' && needs.pr-gate.result == 'skipped')) }}
     runs-on: ${{ matrix.runner }}
 
     strategy:

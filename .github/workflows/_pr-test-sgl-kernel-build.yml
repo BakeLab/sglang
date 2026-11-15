@@ -68,6 +68,7 @@ jobs:
           ref: ${{ inputs.git_ref || github.sha }}
 
       - uses: ./.github/actions/check-maintenance
+        if: github.server_url == 'https://github.com'
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5

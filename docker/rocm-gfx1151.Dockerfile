@@ -146,12 +146,12 @@ RUN cd /sgl-workspace/sglang \
 # fails outright without it. Installed WITHOUT PREBUILD_KERNELS -- that step
 # AOT-compiles the CDNA assembly kernels and is what actually fails on gfx1151.
 # In JIT mode aiter builds module_aiter_core for gfx1151 on demand instead.
-ARG AITER_REPO="https://github.com/ROCm/aiter.git"
-ARG AITER_COMMIT="c16d44b93a528b2a4bfd6d8d3409116d465872a9"
+ARG AITER_REPO="https://github.com/BakeLab/aiter.git"
+ARG AITER_COMMIT="fe95ed13fd8cbf682a80e896a4a2203a31c56276"
 
 RUN git clone --recursive ${AITER_REPO} /sgl-workspace/aiter \
     && cd /sgl-workspace/aiter \
-    && git checkout ${AITER_COMMIT} \
+    && git checkout --detach ${AITER_COMMIT} \
     && git submodule update --init --recursive \
     && GPU_ARCHS=${GPU_ARCH} pip install --no-cache-dir --no-build-isolation \
          --config-settings editable_mode=compat -e .

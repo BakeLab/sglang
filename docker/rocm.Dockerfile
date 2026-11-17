@@ -73,7 +73,7 @@ ENV BUILD_TRITON="0"
 ENV BUILD_LLVM="0"
 ENV BUILD_AITER_ALL="1"
 ENV BUILD_MOONCAKE="1"
-ENV AITER_COMMIT_DEFAULT="285579b6211b0da30f35b91a890c29c823597cd1"
+ENV AITER_COMMIT_DEFAULT="fe95ed13fd8cbf682a80e896a4a2203a31c56276"
 
 # ===============================
 # Base image 942 with rocm720 and args
@@ -83,7 +83,7 @@ ENV BUILD_TRITON="1"
 ENV BUILD_LLVM="0"
 ENV BUILD_AITER_ALL="1"
 ENV BUILD_MOONCAKE="1"
-ENV AITER_COMMIT_DEFAULT="285579b6211b0da30f35b91a890c29c823597cd1"
+ENV AITER_COMMIT_DEFAULT="fe95ed13fd8cbf682a80e896a4a2203a31c56276"
 ENV TRITON_COMMIT_DEFAULT="42270451990532c67e69d753fbd026f28fcc4840"
 
 # ===============================
@@ -94,7 +94,7 @@ ENV BUILD_TRITON="1"
 ENV BUILD_LLVM="0"
 ENV BUILD_AITER_ALL="1"
 ENV BUILD_MOONCAKE="1"
-ENV AITER_COMMIT_DEFAULT="285579b6211b0da30f35b91a890c29c823597cd1"
+ENV AITER_COMMIT_DEFAULT="fe95ed13fd8cbf682a80e896a4a2203a31c56276"
 # Pin the ROCm torch stack for every pip invocation in this flavor. The file is
 # filled in after the torch 2.11 upgrade below; it must already exist (empty is
 # valid) because pip reads PIP_CONSTRAINT from the first pip call onwards.
@@ -118,7 +118,7 @@ ENV BUILD_TRITON="0"
 ENV BUILD_LLVM="0"
 ENV BUILD_AITER_ALL="1"
 ENV BUILD_MOONCAKE="1"
-ENV AITER_COMMIT_DEFAULT="285579b6211b0da30f35b91a890c29c823597cd1"
+ENV AITER_COMMIT_DEFAULT="fe95ed13fd8cbf682a80e896a4a2203a31c56276"
 
 # ===============================
 # Base image 950 with rocm720 and args
@@ -128,7 +128,7 @@ ENV BUILD_TRITON="1"
 ENV BUILD_LLVM="0"
 ENV BUILD_AITER_ALL="1"
 ENV BUILD_MOONCAKE="1"
-ENV AITER_COMMIT_DEFAULT="285579b6211b0da30f35b91a890c29c823597cd1"
+ENV AITER_COMMIT_DEFAULT="fe95ed13fd8cbf682a80e896a4a2203a31c56276"
 ENV TRITON_COMMIT_DEFAULT="42270451990532c67e69d753fbd026f28fcc4840"
 
 # ===============================
@@ -139,7 +139,7 @@ ENV BUILD_TRITON="1"
 ENV BUILD_LLVM="0"
 ENV BUILD_AITER_ALL="1"
 ENV BUILD_MOONCAKE="1"
-ENV AITER_COMMIT_DEFAULT="285579b6211b0da30f35b91a890c29c823597cd1"
+ENV AITER_COMMIT_DEFAULT="fe95ed13fd8cbf682a80e896a4a2203a31c56276"
 # Pin the ROCm torch stack for every pip invocation in this flavor. The file is
 # filled in after the torch 2.11 upgrade below; it must already exist (empty is
 # valid) because pip reads PIP_CONSTRAINT from the first pip call onwards.
@@ -316,7 +316,7 @@ ENV BUILD_TRITON="0"
 ENV BUILD_LLVM="0"
 ENV BUILD_AITER_ALL="1"
 ENV BUILD_MOONCAKE="1"
-ENV AITER_COMMIT_DEFAULT="285579b6211b0da30f35b91a890c29c823597cd1"
+ENV AITER_COMMIT_DEFAULT="fe95ed13fd8cbf682a80e896a4a2203a31c56276"
 # Same reasoning as the rocm724 stages: keep pip from resolving the image's
 # ROCm torch away to a PyPI CUDA build. Populated after the stack is in place.
 ENV PIP_CONSTRAINT="/etc/sglang/constraints/torch-rocm.txt"
@@ -337,7 +337,7 @@ ENV TRITON_WHEEL_VERSION_SUFFIX=".rocm10.0.0"
 ENV BUILD_LLVM="0"
 ENV BUILD_AITER_ALL="1"
 ENV BUILD_MOONCAKE="1"
-ENV AITER_COMMIT_DEFAULT="285579b6211b0da30f35b91a890c29c823597cd1"
+ENV AITER_COMMIT_DEFAULT="fe95ed13fd8cbf682a80e896a4a2203a31c56276"
 ENV PIP_CONSTRAINT="/etc/sglang/constraints/torch-rocm.txt"
 RUN mkdir -p /etc/sglang/constraints && : > /etc/sglang/constraints/torch-rocm.txt
 
@@ -354,10 +354,8 @@ ENV BUILD_TRITON="1"
 ENV BUILD_LLVM="0"
 ENV BUILD_AITER_ALL="1"
 ENV BUILD_MOONCAKE="1"
-# gfx1250 is promoted to its own AITER pin here, ahead of the gfx942/gfx950
-# shared pin. Validated by the manual gfx1250 AITER Scout #173 A/B (no automated
-# gfx1250 Scout): gpt-oss, Flux.2, Wan2.2 and Kimi-K2 all NO_NEW_REGRESSION.
-ENV AITER_COMMIT_DEFAULT="07ff5f318b8a34334125a2287acbfcc56bd2898a"
+# Use the same BakeLab AITER revision while retaining gfx1250 build settings.
+ENV AITER_COMMIT_DEFAULT="fe95ed13fd8cbf682a80e896a4a2203a31c56276"
 # The upstream Triton the gfx1250 bring-up was validated against, carried over
 # from the ROCm 7.14 flavor this image replaced. Built from source below.
 ENV TRITON_COMMIT_DEFAULT="76940ad348795521b3dc9f6c79acd7309ff924e3"
@@ -380,7 +378,7 @@ ENV TRITON_REVERT_COMMITS_DEFAULT="9debefe44117a44c274b05033cfe9e4858883b86"
 ENV BUILD_LLVM="0"
 ENV BUILD_AITER_ALL="1"
 ENV BUILD_MOONCAKE="1"
-ENV AITER_COMMIT_DEFAULT="07ff5f318b8a34334125a2287acbfcc56bd2898a"
+ENV AITER_COMMIT_DEFAULT="fe95ed13fd8cbf682a80e896a4a2203a31c56276"
 ENV BUILD_RCCL="1"
 # rocm-systems develop. The fix for the hang in the first all-reduce on gfx1250
 # (ROCm/rocm-systems#14254) has landed on the mainline, so pin develop instead
@@ -457,7 +455,7 @@ ARG TORCH_ROCM_VERSION="2.11.0+rocm7.2"
 ARG TORCHVISION_ROCM_VERSION="0.26.0+rocm7.2"
 ARG TORCHAUDIO_ROCM_VERSION="2.11.0+rocm7.2"
 
-ARG AITER_REPO="https://github.com/ROCm/aiter.git"
+ARG AITER_REPO="https://github.com/BakeLab/aiter.git"
 ARG AITER_COMMIT=""
 ENV AITER_COMMIT="${AITER_COMMIT:-${AITER_COMMIT_DEFAULT}}"
 
@@ -684,7 +682,7 @@ RUN pip uninstall -y aiter
 # apply fix for v4 fp4 indexer, may be removed in next aiter upgrade
 RUN git clone ${AITER_REPO} \
  && cd aiter \
- && git checkout -f ${AITER_COMMIT} \
+ && git checkout --detach -f ${AITER_COMMIT} \
  && sed -i 's/from functools import lru_cache/from functools import cache/' aiter/ops/flydsl/kernels/mqa_logits/pa_mqa_logits_fp4_prefill.py \
  && sed -i 's/@lru_cache(maxsize=32)/@cache/' aiter/ops/flydsl/kernels/mqa_logits/pa_mqa_logits_fp4_prefill.py \
  && git submodule update --init --recursive \
@@ -712,28 +710,6 @@ RUN cd aiter \
           sh -c "GPU_ARCHS=$GPU_ARCH_LIST pip install --config-settings editable_mode=compat -e ."; \
         fi \
       && echo "export PYTHONPATH=/sgl-workspace/aiter:\${PYTHONPATH}" >> /etc/bash.bashrc
-
-# torch 2.11 Dynamo may pass a base torch.Stream; drop after ROCm/aiter#4817.
-RUN python3 <<'PY'
-from pathlib import Path
-p = Path("/sgl-workspace/aiter/csrc/cpp_itfs/torch_utils.py")
-s = p.read_text()
-old = """        elif isinstance(arg, torch.cuda.Stream):
-            c_args.append(ctypes.cast(arg.cuda_stream, ctypes.c_void_p))
-"""
-new = """        elif isinstance(arg, torch.Stream):
-            handle = getattr(arg, "cuda_stream", None)
-            if handle is None:
-                handle = torch.cuda.Stream(
-                    stream_id=arg.stream_id,
-                    device_index=arg.device_index,
-                    device_type=arg.device_type,
-                ).cuda_stream
-            c_args.append(ctypes.cast(handle, ctypes.c_void_p))
-"""
-if old in s:
-    p.write_text(s.replace(old, new))
-PY
 
 # -----------------------
 # Build Mooncake

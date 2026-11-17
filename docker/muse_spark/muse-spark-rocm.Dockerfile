@@ -383,7 +383,9 @@ ARG TORCH_ROCM_VERSION="2.11.0+rocm7.2"
 ARG TORCHVISION_ROCM_VERSION="0.26.0+rocm7.2"
 ARG TORCHAUDIO_ROCM_VERSION="2.11.0+rocm7.2"
 
-ARG AITER_REPO="https://github.com/ROCm/aiter.git"
+# Keep the Muse Spark stage pins until patches 03, 05 and 06 are ported to
+# the common BakeLab AITER revision; they do not apply to fe95ed13f.
+ARG AITER_REPO="https://github.com/BakeLab/aiter.git"
 ARG AITER_COMMIT=""
 ENV AITER_COMMIT="${AITER_COMMIT:-${AITER_COMMIT_DEFAULT}}"
 

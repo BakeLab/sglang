@@ -7,10 +7,10 @@ on:
   workflow_dispatch:
     inputs:
       aiter_ref:
-        description: 'AITER git ref (branch, tag, or SHA). Default: main (latest commit)'
+        description: 'AITER git ref (branch, tag, or SHA). Default: trim (latest BakeLab commit)'
         required: false
         type: string
-        default: 'main'
+        default: 'trim'
       job_filter:
         description: 'Workflows: nightly-amd, pr-test-amd. Default: all'
         required: false
@@ -43,15 +43,15 @@ jobs:
       - name: Resolve AITER commit
         id: resolve
         run: |
-          REF="${{ inputs.aiter_ref || 'main' }}"
+          REF="${{ inputs.aiter_ref || 'trim' }}"
           echo "Resolving AITER ref: ${REF}"
 
-          SHA=$(git ls-remote https://github.com/ROCm/aiter.git "refs/heads/${REF}" | head -1 | cut -f1)
+          SHA=$(git ls-remote https://github.com/BakeLab/aiter.git "refs/heads/${REF}" | head -1 | cut -f1)
           if [ -z "$SHA" ]; then
-            SHA=$(git ls-remote https://github.com/ROCm/aiter.git "refs/tags/${REF}" | head -1 | cut -f1)
+            SHA=$(git ls-remote https://github.com/BakeLab/aiter.git "refs/tags/${REF}" | head -1 | cut -f1)
           fi
           if [ -z "$SHA" ]; then
-            SHA=$(git ls-remote https://github.com/ROCm/aiter.git "${REF}" | head -1 | cut -f1)
+            SHA=$(git ls-remote https://github.com/BakeLab/aiter.git "${REF}" | head -1 | cut -f1)
           fi
           if [ -z "$SHA" ]; then
             SHA="${REF}"
@@ -61,7 +61,7 @@ jobs:
           echo "### AITER Ref Resolution" >> $GITHUB_STEP_SUMMARY
           echo "- **Requested ref:** \`${REF}\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Resolved SHA:** \`${SHA}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **AITER commit:** https://github.com/ROCm/aiter/commit/${SHA}" >> $GITHUB_STEP_SUMMARY
+          echo "- **AITER commit:** https://github.com/BakeLab/aiter/commit/${SHA}" >> $GITHUB_STEP_SUMMARY
 
       - name: Parse job filter
         id: parse
@@ -89,7 +89,7 @@ jobs:
     uses: ./.github/workflows/nightly-test-amd.yml
     secrets: inherit
     with:
-      ref: amd/aiter-ci
+      ref: trim
       rocm_version: all
       aiter_ref: ${{ needs.resolve-aiter.outputs.aiter_sha }}
       job_filter: 'all'
@@ -102,7 +102,7 @@ jobs:
     uses: ./.github/workflows/pr-test-amd.yml
     secrets: inherit
     with:
-      ref: amd/aiter-ci
+      ref: trim
       rocm_version: all
       run_all_tests: true
       aiter_ref: ${{ needs.resolve-aiter.outputs.aiter_sha }}
@@ -120,9 +120,9 @@ jobs:
         run: |
           echo "## AMD AITER Scout Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **SGLang ref:** \`amd/aiter-ci\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **SGLang ref:** \`trim\`" >> $GITHUB_STEP_SUMMARY
           echo "- **AITER SHA:** \`${{ needs.resolve-aiter.outputs.aiter_sha }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **AITER commit:** https://github.com/ROCm/aiter/commit/${{ needs.resolve-aiter.outputs.aiter_sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **AITER commit:** https://github.com/BakeLab/aiter/commit/${{ needs.resolve-aiter.outputs.aiter_sha }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Workflow | Result |" >> $GITHUB_STEP_SUMMARY
           echo "|----------|--------|" >> $GITHUB_STEP_SUMMARY

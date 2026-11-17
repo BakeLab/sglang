@@ -447,7 +447,7 @@ if [[ "${NEED_REBUILD}" == "true" ]]; then
     docker exec "$CI_CONTAINER_NAME" rm -rf /sgl-workspace/aiter
 
     # clone a fresh copy to /sgl-workspace/aiter
-    docker exec "$CI_CONTAINER_NAME" git clone https://github.com/ROCm/aiter.git /sgl-workspace/aiter
+    docker exec "$CI_CONTAINER_NAME" git clone https://github.com/BakeLab/aiter.git /sgl-workspace/aiter
 
     # checkout correct version and install requirements
     # Use `checkout -f` so the smudge-filter-induced "dirty" working tree from
@@ -458,7 +458,7 @@ if [[ "${NEED_REBUILD}" == "true" ]]; then
     docker exec "$CI_CONTAINER_NAME" bash -c "
         cd /sgl-workspace/aiter && \
         git fetch --all && \
-        git checkout -f ${REPO_AITER_COMMIT} && \
+        git checkout --detach -f ${REPO_AITER_COMMIT} && \
         git submodule update --init --recursive && \
         pip install -r requirements.txt
     "
@@ -472,30 +472,6 @@ if [[ "${NEED_REBUILD}" == "true" ]]; then
             sed -i 's/@lru_cache(maxsize=32)/@cache/' aiter/ops/flydsl/kernels/mqa_logits/pa_mqa_logits_fp4_prefill.py && \
             cp /sglang-checkout/python/sglang/kernels/ops/attention/dsv4/asm/gfx950/mla_v4/mla_a8w8_qh64_qseqlen1_gqaratio64_nm.co hsa/gfx950/mla_v4/
         "
-    fi
-
-    # Re-apply the Dockerfile torch.Stream patch after re-clone (ROCm/aiter#4817).
-    if [[ "${IMAGE_STAGE_SUFFIX}" == "-rocm724" || "${IMAGE_STAGE_SUFFIX}" == "-rocm1000" || "${IMAGE_GFX}" == "gfx942" || "${IMAGE_GFX}" == "gfx950" ]]; then
-        docker exec -i "$CI_CONTAINER_NAME" python3 - <<'PY'
-from pathlib import Path
-p = Path("/sgl-workspace/aiter/csrc/cpp_itfs/torch_utils.py")
-s = p.read_text()
-old = """        elif isinstance(arg, torch.cuda.Stream):
-            c_args.append(ctypes.cast(arg.cuda_stream, ctypes.c_void_p))
-"""
-new = """        elif isinstance(arg, torch.Stream):
-            handle = getattr(arg, "cuda_stream", None)
-            if handle is None:
-                handle = torch.cuda.Stream(
-                    stream_id=arg.stream_id,
-                    device_index=arg.device_index,
-                    device_type=arg.device_type,
-                ).cuda_stream
-            c_args.append(ctypes.cast(handle, ctypes.c_void_p))
-"""
-if old in s:
-    p.write_text(s.replace(old, new))
-PY
     fi
 
     if [[ "${GPU_ARCH}" == "mi35x" ]]; then

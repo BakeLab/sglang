@@ -1,0 +1,41 @@
+name: govulncheck
+
+on:
+  push:
+    branches: [trim]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: govulncheck-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scan:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        module:
+          - "sgl-model-gateway/bindings/golang/examples/oai_server"
+          - "sgl-model-gateway/bindings/golang"
+    defaults:
+      run:
+        working-directory: ${{ matrix.module }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: ${{ matrix.module }}/go.mod
+          cache-dependency-path: ${{ matrix.module }}/go.sum
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.10.0
+      # Scan the dependency graph without requiring native libraries or generated UI assets.
+      # Package-level findings include vulnerabilities in code that may not be reachable.
+      - name: Check imported vulnerabilities
+        env:
+          GOWORK: 'off'
+        run: govulncheck -scan=package ./...

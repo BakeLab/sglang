@@ -1,0 +1,14 @@
+version: 2
+updates:
+
+  - package-ecosystem: gomod
+    directories:
+      - "/sgl-model-gateway/bindings/golang/examples/oai_server"
+      - "/sgl-model-gateway/bindings/golang"
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
